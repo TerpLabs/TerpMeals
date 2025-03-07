@@ -77,19 +77,25 @@ export default ({navigation}) => {
             {Object.keys(data).includes(selectedHall) && Object.keys(data[selectedHall]).map((meal, i) => {
                 if(meal != "name" && meal != "link"){
                     return (
-                        <View className = "px-4">
-                            <Text className = "font-bold text-xl">{meal}</Text>
+                        <View>
+                        <Text className = "font-bold text-xl">{meal}</Text>
+                        <View className = "px-4 flex flex-row flex-wrap">
                             {Object.keys(data[selectedHall][meal]).map((dish, idx) => {
                                 return (
-                                    <View className = "inline-block">
+                                    <View>
                                         <Text className = "italic font-semibold">{dish}</Text>
-                                        <View className = "px-8">
+                                        <View className = "px-8 border-l-2 border-t-2 border-gray-300 bg-gray-100 mx-8 my-4">
                                             {Object.keys(data[selectedHall][meal][dish]).map((item, idy) => {
                                                 return (
-                                                    <TouchableOpacity className = "border-2 h-32 w-32">
-                                                        <Text className='font-bold text-red-600'>{item}</Text>
+                                                    <TouchableOpacity className = "h-32 w-32">
+                                                        {item.length <= 10 && <Text className='font-bold text-red-600 italic text-lg py-2'>{item}</Text>}
+                                                        {item.length > 10 && <Text className='font-bold text-red-600 italic'>{item}</Text>}
                                                         <Text>{data[selectedHall][meal][dish][item].toString()}</Text>
-                                                        <Text>C: {JSON.stringify(data.macros[item].calories_per_serving)} P: {JSON.stringify(data.macros[item].Protein)}</Text>
+                                                        <Text>{"\n"}</Text>
+                                                        <View className = "bg-gray-200 py-2 flex-row font-bold">  
+                                                            <Text>C: {JSON.stringify(data.macros[item].calories_per_serving.replace('"', ''))}  </Text>
+                                                            <Text>P: {JSON.stringify(data.macros[item].Protein.replace('"', '').replace('g', ''))}</Text>
+                                                        </View>
                                                         <Text>{"\n"}</Text>
                                                     </TouchableOpacity>
                                                 )
@@ -98,6 +104,7 @@ export default ({navigation}) => {
                                     </View>
                                 )
                             })}
+                        </View>
                         </View>
                     )
                 }
