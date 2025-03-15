@@ -14,7 +14,6 @@ export default ({navigation}) => {
     //Sliding animation
     const slideAnim = useRef(new Animated.Value(0)).current
 
-
     //Loading data on page reload
     useEffect(() => {
 
@@ -107,6 +106,7 @@ export default ({navigation}) => {
                                             {Object.keys(data[selectedHall][meal][dish]).map((item, idy) => {
                                                 return (
                                                     <View className = "h-32 py-2 border-b-4 border-red-500 w-full rounded-2xl px-12 inline">
+                                    
                                                         <View className = "flex-col float-left w-72">
                                                             <Text className='font-bold text-black italic text-xl'>{item.replace("&amp;", "and")}</Text>
                                                             <View className = 'flex-row flex-wrap mt-4'>
@@ -142,12 +142,12 @@ export default ({navigation}) => {
                                                                             backgroundColor: "#7d5633",
                                                                             borderTopColor: "black",
                                                                             borderTopWidth: "2px",
-                                                                            width: slideAnim.interpolate({
+                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
                                                                                 inputRange: [0, 1],
                                                                                 outputRange: [0, 
                                                                                     10 + (200 * Math.log(1+parseInt(nut[item]["Total Carbohydrate."].replace("g", ""), 10)))
                                                                                 ],  // Expands from 0px to 200px
-                                                                            })
+                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Total Carbohydrate."].replace("g", ""), 10)))}px`
                                                                         }}>
                                                                         </Animated.View>
 
@@ -156,12 +156,12 @@ export default ({navigation}) => {
                                                                             backgroundColor: "orange",
                                                                             borderTopColor: "black",
                                                                             borderTopWidth: "2px",
-                                                                            width: slideAnim.interpolate({
+                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
                                                                                 inputRange: [0, 1],
                                                                                 outputRange: [0, 
                                                                                     10 + (200 * Math.log(1+parseInt(nut[item]["Protein"].replace("g", ""), 10)))
                                                                                 ],  // Expands from 0px to 200px
-                                                                            })
+                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Protein"].replace("g", ""), 10)))}px`
                                                                         }}>
                                                                         </Animated.View>
 
@@ -170,12 +170,12 @@ export default ({navigation}) => {
                                                                             backgroundColor: "#f0d330",
                                                                             borderTopColor: "black",
                                                                             borderTopWidth: "2px",
-                                                                            width: slideAnim.interpolate({
+                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
                                                                                 inputRange: [0, 1],
                                                                                 outputRange: [0, 
                                                                                     10 + (200 * Math.log(1+parseInt(nut[item]["Total Fat"].replace("g", ""), 10)))
                                                                                 ],  // Expands from 0px to 200px
-                                                                            })
+                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Total Fat"].replace("g", ""), 10)))}px`
                                                                         }}>
                                                                         </Animated.View>
 
@@ -187,14 +187,7 @@ export default ({navigation}) => {
                                                                 </View>
                                                                 <View className = "w-24 h-full"></View>
 
-                                                                <View style={{ flexDirection: 'col', justifyContent: 'flex-end' }}>
-                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
-                                                                        <Image source = {require('assets/add.png')}></Image>
-                                                                    </TouchableOpacity>
-                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
-                                                                        <Image source ={require('assets/heart.png')}></Image>
-                                                                    </TouchableOpacity>
-                                                                </View>
+                                                            
                                                             </View>
                                                         }
 
@@ -203,6 +196,15 @@ export default ({navigation}) => {
 
                                                         }
                                                       
+                                                      <View className = "float-right flex-col">
+                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
+                                                                        <Image source = {require('assets/add.png')}></Image>
+                                                                    </TouchableOpacity>
+                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
+                                                                        <Image source ={require('assets/heart.png')}></Image>
+                                                                    </TouchableOpacity>
+                                                                </View>
+
                                                     </View>
                                                 )
                                             })}
