@@ -1,7 +1,6 @@
 import {Text, View, ScrollView, StyleSheet, TouchableOpacity, Animated, Image, Touchable } from 'react-native'
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import RNPickerSelect from 'react-native-picker-select';
 
 
 export default ({navigation}) => {
@@ -40,7 +39,7 @@ export default ({navigation}) => {
                 let nutData = await response.json();
 
                 setData(menuData.data);
-                setNut(nut.macros)
+                setNut(nutData.macros)
                 await AsyncStorage.setItem("menu", JSON.stringify(menuData)); 
                 await AsyncStorage.setItem("nut", JSON.stringify(nutData)) 
                 await AsyncStorage.setItem("lastUpdated", String(currentDay));
