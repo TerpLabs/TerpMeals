@@ -5,6 +5,7 @@ import Create from 'components/Create';
 import Menu from 'components/Menu';
 import Tracker from 'components/Tracker';
 import Account from 'components/Account';
+import tw from 'tailwind-react-native-classnames';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import './global.css';
@@ -16,7 +17,15 @@ const Tab = createBottomTabNavigator();
 function TabNavigator() {
   return (
     <Tab.Navigator>
-      <Tab.Screen name="Menu" component={Menu} />
+      <Tab.Screen
+        name="Today's Menu"
+        component={Menu}
+        options={{
+          headerTitleAlign: 'left',
+          headerTitleStyle: tw`text-2xl font-bold text-white`,
+          headerStyle: tw`bg-yellow-500`
+        }}
+      />
       <Tab.Screen name="Tracker" component={Tracker} />
       <Tab.Screen name="Account" component={Account} />
     </Tab.Navigator>
