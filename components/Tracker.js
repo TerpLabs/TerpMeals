@@ -97,7 +97,9 @@ export default ({ navigation }) => {
         //Subtracting from trackedNut
         let updatedTrackedNut = {...trackedNut}
         Object.keys(updatedTrackedNut).forEach(key => {
-            updatedTrackedNut[key] = updatedTrackedNut[key] - (meal_servings * nut[meal][key])
+            if(nut[meal][key]){
+                updatedTrackedNut[key] = updatedTrackedNut[key] - (meal_servings * nut[meal][key])
+            }
         })
 
         //Removing key & updating everything 
@@ -224,14 +226,18 @@ export default ({ navigation }) => {
                             setServingSizes(serving_sizes)
                         }
                         return (
-                            <View className="border-2 border-black w-full h-12 flex-row items-center px-4 justify-between pointer-events-auto">
+                            <View className="border-2 border-black w-full h-14 flex-row items-center px-4 justify-between pointer-events-auto">
 
-                            <View className="flex-row">
-                                    <Text className="italic font-bold text-xl">{meal.replace("&amp;", "")} </Text>
+                            <View className="flex-col">
+
+                                    <Text 
+                                    className={`italic font-bold ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}
+                                    >{meal.replace("&amp;", "")} </Text>
+
                                     {Object.keys(nut[meal]).includes("calories_per_serving") ? (
                                     <View className="flex-row">
 
-                                            <Text className="text-white font-bold text-center bg-red-600 w-10 h-8 mx-1">
+                                            <Text className="text-white text-xs font-bold text-center bg-red-600 w-10 h-4 mx-1">
                                             {servingSizes[idx.toString()] == "" ? nut[meal]["calories_per_serving"].replace("g", "") : 
                                             Math.round(parseInt(nut[meal]["calories_per_serving"].replace("g", "")) * parseFloat(servingSizes[idx.toString()]) * 1000) / 1000
                                             }
@@ -243,7 +249,7 @@ export default ({ navigation }) => {
                                                 <Text key = {idy} style = {{
                                                     "backgroundColor" : colors[idy]
                                                 }}
-                                                className = "text-white font-bold text-center w-8 h-8 mx-1"
+                                                className = "text-white text-xs font-bold text-center w-8 h-4 mx-1"
                                                 >
                                                 {servingSizes[idx.toString()] == "" ? nut[meal][key].replace("g", "") : 
                                                 Math.round(parseInt(nut[meal][key].replace("g", "")) * parseFloat(servingSizes[idx.toString()]) * 1000) / 1000
@@ -259,7 +265,7 @@ export default ({ navigation }) => {
 
                             {/* Right Section */}
                             <View className="flex-row items-center">
-                                <Text className="text-xl font-bold italic">Servings: </Text>
+                               {/* <Text className="text-xl font-bold italic">Servings: </Text> */}
 
                                 <TextInput
                                 className="w-8 h-8"
@@ -302,12 +308,15 @@ export default ({ navigation }) => {
                     return (
                         <View className="flex-row border-b-4 py-2 mx-4 border-red-500 rounded-xl justify-between pointer-events-auto" key = {idx}>
                                         
-                                    <View className = "flex-row">
-                                        <Text className="italic font-bold text-xl">{meal.replace("&amp;", "")} </Text>
+                                    <View className = "flex-col">
+
+                                        <Text className={`italic font-bold ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}>
+                                            {meal.replace("&amp;", "")} </Text>
+
                                         {Object.keys(nut[meal]).includes("calories_per_serving") ? (
                                         <View className="flex-row">
 
-                                                <Text className="text-white font-bold text-center bg-red-600 w-10 h-8 mx-1">
+                                                <Text className="text-white font-bold text-center bg-red-600 w-10 h-4 text-xs mx-1">
                                                 {
                                                 Math.round(parseInt(nut[meal]["calories_per_serving"].replace("g", "")) * trackedMeals[meal] * 1000) / 1000
                                                 }
@@ -319,7 +328,7 @@ export default ({ navigation }) => {
                                                     <Text key = {idy} style = {{
                                                         "backgroundColor" : colors[idy]
                                                     }}
-                                                    className = "text-white font-bold text-center w-8 h-8 mx-1"
+                                                    className = "text-white text-xs font-bold text-center w-8 h-4 mx-1"
                                                     >
                                                     {
                                                     Math.round(parseInt(nut[meal][key].replace("g", "")) * trackedMeals[meal] * 1000) / 1000
@@ -335,7 +344,6 @@ export default ({ navigation }) => {
 
 
                                     <View className="flex-row items-center">
-                                        <Text className="text-xl font-bold italic">Servings: </Text>
 
                                         <TextInput
                                         className="w-8 h-8"
