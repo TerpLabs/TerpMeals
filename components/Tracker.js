@@ -9,7 +9,6 @@ export default ({ navigation }) => {
     const [trackedMeals,setTrackedMeals] = useState({});
     const [searchTerm, setSearchTerm] = useState("");
     const [showItemSelection, setShowItemSelection] = useState(false);
-    const [preventBlur, setPreventBlur] = useState(false)
 
     //Custom state for showing preioritized macros for later setting it 
     const [showedMacros, setShowedMacros] = useState({
@@ -160,11 +159,11 @@ export default ({ navigation }) => {
 
     return (
         <ScrollView className = "bg-white">
-            <View className="bg-red-500 border-b-4 border-red-800 px-4 py-4">
+            <View className="bg-black border-b-4 px-4 py-4">
                 <Text className="text-4xl font-bold text-white mb-4">Today's Nutrition</Text>
             </View>
 
-            <View className="items-center">
+            <View className="items-center ">
                 <Text className="text-3xl text-red-600 font-bold">
                     {trackedNut?.calories_per_serving ?? 0} total calories
                 </Text>
@@ -217,7 +216,7 @@ export default ({ navigation }) => {
                     onChangeText={setSearchTerm}
                 />
                 
-                <ScrollView className={`border-black transition-all w-5/6 ${showItemSelection ? ' border-2 h-fit max-h-48' : ' border-0 h-0'}`}>
+                <ScrollView className={`border-white transition-all w-5/6 ${showItemSelection ? ' border-2 h-fit max-h-48' : ' border-0 h-0'}`}>
                 {Object.keys(nut).map((meal, idx) => {
                     if(searchTerm == '' || meal.toLowerCase().includes(searchTerm.toLowerCase())){
                         if(!Object.keys(servingSizes).includes(idx.toString())){
@@ -226,12 +225,12 @@ export default ({ navigation }) => {
                             setServingSizes(serving_sizes)
                         }
                         return (
-                            <View className="border-2 border-black w-full h-14 flex-row items-center px-4 justify-between pointer-events-auto">
+                            <View className="border-b-2 bg-gray-200 bg-opacity-25 border-gray-500 w-full h-14 flex-row items-center px-4 justify-between pointer-events-auto">
 
                             <View className="flex-col">
 
                                     <Text 
-                                    className={`italic font-bold ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}
+                                    className={`text-grey-700 ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}
                                     >{meal.replace("&amp;", "")} </Text>
 
                                     {Object.keys(nut[meal]).includes("calories_per_serving") ? (
@@ -265,7 +264,7 @@ export default ({ navigation }) => {
 
                             {/* Right Section */}
                             <View className="flex-row items-center">
-                               {/* <Text className="text-xl font-bold italic">Servings: </Text> */}
+                
 
                                 <TextInput
                                 className="w-8 h-8"
@@ -279,7 +278,7 @@ export default ({ navigation }) => {
                                 />
 
                                 <TouchableOpacity
-                                className="text-5xl bold italic text-gray-400 my-2"
+                                className="text-5xl bold text-gray-400 my-2"
                                 onPress={() => {
                                     let servings = servingSizes[idx.toString()]
                                     servings = servings.match("[0-9]*(.[0-9]*)?")[0]
@@ -303,14 +302,14 @@ export default ({ navigation }) => {
             </View>
 
             <View className = "mt-8">
-                <Text className = "font-bold text-2xl italic px-4">Tracked Meals</Text>
+                <Text className = "font-bold text-2xl px-4">Tracked Meals</Text>
                 {Object.keys(trackedMeals).filter(meal => trackedMeals[meal] > 0).map((meal, idx) => {
                     return (
-                        <View className="flex-row border-b-4 py-2 mx-4 border-red-500 rounded-xl justify-between pointer-events-auto" key = {idx}>
+                        <View className="flex-row border-b-2 py-2 mx-4 border-gray-700 border-t-2 bg-gray-500 bg-opacity-10 justify-between pointer-events-auto" key = {idx}>
                                         
                                     <View className = "flex-col">
 
-                                        <Text className={`italic font-bold ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}>
+                                        <Text className={`${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}>
                                             {meal.replace("&amp;", "")} </Text>
 
                                         {Object.keys(nut[meal]).includes("calories_per_serving") ? (
