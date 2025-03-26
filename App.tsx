@@ -15,18 +15,27 @@ const Tab = createBottomTabNavigator();
 
 //Tab Navigator
 function TabNavigator() {
+  const date = `Today's Menu`
   return (
     <Tab.Navigator>
       <Tab.Screen
-        name="Today's Menu"
+        name={date}
         component={Menu}
         options={{
           headerTitleAlign: 'left',
-          headerTitleStyle: tw`text-2xl font-bold text-white`,
-          headerStyle: tw`bg-yellow-500`
+          headerTitleStyle: tw`text-4xl font-bold text-white`,
+          headerStyle: [tw`bg-black`, { height: 120 }],
         }}
       />
-      <Tab.Screen name="Tracker" component={Tracker} />
+      <Tab.Screen
+        name="Tracker"
+        component={Tracker}
+        options={{
+          headerTitleAlign: 'left',
+          headerTitleStyle: tw`text-4xl font-bold text-white`,
+          headerStyle: [tw`bg-yellow-500`, { height: 120 }],
+        }}
+      />
       <Tab.Screen name="Account" component={Account} />
     </Tab.Navigator>
   );

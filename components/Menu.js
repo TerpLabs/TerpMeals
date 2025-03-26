@@ -16,7 +16,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default ({ navigation }) => {
   //State
   const [data, setData] = useState({});
-  const [nut, setNut] = useState({});
   const [selectedHall, setSelectedHall] = useState('Y');
 
   //Sliding animation
@@ -55,8 +54,6 @@ export default ({ navigation }) => {
       } else {
         let response = await fetch('http://localhost:2022/api/get-meals-info');
         let menuData = await response.json();
-        response = await fetch('http://localhost:2022/api/get-nutrition');
-        let nutData = await response.json();
 
         setData(menuData.data);
         setNut(nutData.macros);
@@ -78,35 +75,32 @@ export default ({ navigation }) => {
   return (
     <ScrollView className="bg-white">
       <View>
-        <View className="bg-red-500 p-2 fixed">
-          <View className="mx-auto flex-row">
+        <View className="fixed bg-gray-950 p-2">
+          <View className="ml-5 w-11/12 flex-row mb-3 justify-center bg-slate-200">
             {[
-              { label: 'Y', value: 'Y' },
-              { label: 'N', value: 'North' },
-              { label: 'S', value: 'South' },
-            ].map((diningHall, id) => {
-              return (
-                <TouchableOpacity
-                  className={`mr-6 border-b-4 ${
-                    selectedHall == diningHall.value
-                      ? 'border-yellow-500 text-yellow-300'
-                      : 'border-red-800 text-white'
-                  } w-8 text-center text-xl font-bold transition-all`}
-                  onPress={() => {
-                    setSelectedHall(diningHall.value);
-                    slideAnim.setValue(0);
-                    Animated.timing(slideAnim, {
-                      toValue: 1,
-                      duration: 1000,
-                      useNativeDriver: false,
-                    }).start();
-                  }}>
-                  <Text className="text-center text-xl font-bold text-white">
-                    {diningHall.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+              { label: 'Yahentamitsi', value: 'Y' },
+              { label: '251 North', value: 'North' },
+              { label: 'South Campus', value: 'South' },
+            ].map((diningHall, id) => (
+              <TouchableOpacity
+                key={id}
+                className={`${
+                  selectedHall === diningHall.value ? 'bg-red-500 text-white' : 'bg-slate-700 text-white'
+                } text-center text-xl w-1/3 font-bold transition-all`}
+                onPress={() => {
+                  setSelectedHall(diningHall.value);
+                  slideAnim.setValue(0);
+                  Animated.timing(slideAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: false,
+                  }).start();
+                }}>
+                <View className="items-center p-2">
+                  <Text className = "font-bold text-white">{diningHall.label}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
         <ImageBackground
@@ -124,16 +118,20 @@ export default ({ navigation }) => {
           if (meal != 'name' && meal != 'link') {
             return (
               <View>
-                <Text className = "px-7 pt-5 text-xl font-bold text-slate-900"> {meal} </Text>
-                <View className="px-5 bg-white">
+                <View className="bg-white">
+                  <View className="font-bol bg-slate-800 px-5 py-4 text-left text-center text-3xl">
+                    <Text className="text-left text-4xl font-bold text-white">{meal} Menu</Text>
+                  </View>
                   {Object.keys(data[selectedHall][meal]).map((dish, idx) => {
                     return (
-                      <View className="mb-10 p-2">
-                        <Text className="text-2xl font-semibold text-gray-600">{dish}</Text>
-                        <View className="mt-5">
+                      <View>
+                        <Text className="bg-yellow-400 px-4 py-2 text-left text-left text-2xl font-bold text-black">
+                          {dish}
+                        </Text>
+                        <View className="border-slate-300">
                           {Object.keys(data[selectedHall][meal][dish]).map((item, idy) => {
                             return (
-                              <View className="bg-slate-100 p-3 border-b-2 border-slate-300">
+                              <View className="border-b-2 border-slate-300 bg-slate-100 p-3">
                                 <Text>{item}</Text>
                               </View>
                             );
