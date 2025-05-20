@@ -1,86 +1,160 @@
-import {Text, View, TextInput, Button} from "react-native"
-import { useState } from "react";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import {ACCESS_KEY_ID, SECRET_ACCESS_KEY} from "@env"
+import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import { DBAPI_URI } from '@env';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default ({navigation}) => {
-    //State
-    const [username, setUsername] = useState("")
-    const [password, setPassword] = useState("")
-    const [err, setErr] = useState("")
+export default function Login() {
+  const navigation = useNavigation();
+  const [form, setForm] = useState({
+    username: '',
+    password: '',
+  });
 
-    //Lambda Config
-    const decoder = new TextDecoder('utf-8');
+  const handleChange = (name, value) => {
+    setForm({
+      ...form,
+      [name]: value,
+    });
+  };
 
-    const client = new LambdaClient({
-        credentials: {
-                accessKeyId: ACCESS_KEY_ID,  
-                secretAccessKey: SECRET_ACCESS_KEY  
-            },
-            region: 'us-east-1'
-        });
+  const handleButtonClick = async () => {
+    try {
+      if (form.username && form.password) {
+        console.log(DBAPI_URI)
+        const body = {
+          username: form.username,
+          password: form.password,
+        };
+        console.log(body)
+        const { data } = await axios.post(
+          DBAPI_URI + '/users/sign-in',
+          body
+        );
+        console.log(data)
 
-    
-    async function invoke(payload){
-      const input = { // InvocationRequest
-        FunctionName: "TerpMealsDBApi", // required
-        Payload: JSON.stringify(payload) //For get: JSON.stringify({"GET": true})
-      };
-      const command = new InvokeCommand(input);
-      const response = await client.send(command);
-      const decodedPayload = new TextDecoder("utf-8").decode(response.Payload);
-      return JSON.parse(decodedPayload).body
+        await AsyncStorage.setItem("userData", data)
+
+        navigation.navigate('TabNavigator', { screen: 'Menu' });
+      } else {
+        Alert.alert('Error', 'Please fill out all fields!');
+      }
+    } catch (e) {
+      console.error(e.message);
+      Alert.alert('Error', 'An error occurred. Please try again.');
     }
+  };
 
+  return (
+    <View style={styles.container}>
+      <Image
+        source={require('../assets/logo.png')} // Update path as needed
+        style={styles.logo}
+      />
+      <Text style={styles.title}>
+        <Text style={styles.hooText}>Terp</Text>Meals
+      </Text>
+      <Text style={styles.subtitle}>Welcome back, log in below.</Text>
 
-    async function handleLogin(){
-        if(username == "" || password == ""){
-            setErr("Invalid Login")
-        }
-        else{
-            let account = await invoke({"command" : "find", "username" : username})
-            if(account == '[]'){
-                setErr("Account not found")
-            }
-            else{
-                let split = account.split('password')[1].split(",")[0].split('":"')[1]
-                if(split == password + '"'){
-                    setErr("Successfully logged in")
-                }
-                else{
-                    setErr("Invalid Username or Password")
-                }
-            }
-        }
-    }
-
-    return (
-        <View className = "items-center">
-            <Text className = "text-xl font-bold">Welcome Back!</Text>
-            <Text>Login to your TerpMeals account to get started</Text>
-
-            <View>
-            <Text aria-label="username" nativeID="username">Username</Text>
-            <TextInput aria-label="username" aria-labelledby="username" onChangeText={setUsername} />
-            </View>
-
-            <View>
-            <Text aria-label="pswd" nativeID="pswd">Password</Text>
-            <TextInput aria-label="pswd" aria-labelledby="pswd" onChangeText={setPassword} />
-            </View>
-
-            <Button title = "Login" onPress={handleLogin}></Button>
-
-            <Text className = "text-red-500 font-bold">{err}</Text>
-
-
-
-            <Text className = "font-italic" onPress={() => {
-                navigation.navigate("Create")
-            }}>Don't have an account?</Text>
-            <Text className = "font-italic">Forgot Password?</Text>
-            <Text className = "font-italic">Enter as guest</Text>
-
-        </View>
-    )
+      <View style={styles.formContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          value={form.username}
+          onChangeText={(text) => handleChange('username', text)}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={form.password}
+          onChangeText={(text) => handleChange('password', text)}
+          secureTextEntry
+        />
+        <TouchableOpacity style={styles.button} onPress={handleButtonClick}>
+          <Text style={styles.buttonText}>Sign In</Text>
+        </TouchableOpacity>
+        <Text style={styles.loginText}>
+          Don't have an account?{' '}
+          <Text
+            style={styles.loginLink}
+            onPress={() => navigation.navigate('Create')}
+          >
+            Register
+          </Text>
+        </Text>
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#fad72a',
+    marginBottom: 4,
+  },
+  hooText: {
+    color: '#e31717',
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    color: '#64748b',
+    marginBottom: 40,
+  },
+  formContainer: {
+    alignItems: 'center',
+  },
+  input: {
+    width: '75%',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 4,
+    padding: 12,
+    marginBottom: 20,
+    color: '#1e293b',
+  },
+  button: {
+    width: '75%',
+    backgroundColor: '#e31717',
+    borderRadius: 4,
+    padding: 12,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  loginText: {
+    marginTop: 40,
+    color: '#fad72a',
+  },
+  loginLink: {
+    color: '#e31717',
+  },
+});

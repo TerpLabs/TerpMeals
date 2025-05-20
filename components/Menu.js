@@ -1,223 +1,205 @@
-import {Text, View, ScrollView, StyleSheet, TouchableOpacity, Animated, Image, Touchable } from 'react-native'
-import { useState, useEffect, useRef } from "react";
+import { Text, View, ScrollView, TextInput, TouchableOpacity, Image, Touchable } from 'react-native';
+import { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DBAPI_URI } from '@env';
+import FoodModal from './modals/FoodModal';
 
+export default ({ navigation }) => {
+    // State
+    const [data, setData] = useState({});
+    const [selectedHall, setSelectedHall] = useState("Y");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [selectedItem, setSelectedItem] = useState({})
 
-export default ({navigation}) => {
+    const [showFoodModal, setShowFoodModal] = useState(false)
+    const [nut, setNut] = useState({});
 
-    //State
-    const [data, setData] = useState({})
-    const [nut, setNut] = useState({})
-    const [selectedHall, setSelectedHall] = useState("Y")
-
-    //Sliding animation
-    const slideAnim = useRef(new Animated.Value(0)).current
-
-    //Loading data on page reload
-    useEffect(() => {
-
-
-
-        async function load(){
-
-            //Load data
-            let cachedData = await AsyncStorage.getItem("menu")
-            let lastUpdated = await AsyncStorage.getItem("lastUpdated")
-            let currentDay = new Date().getDay()
-
-
-
-            if(lastUpdated != null && cachedData != null && lastUpdated != "null" && cachedData != "null" && lastUpdated == currentDay){
-                setData(JSON.parse(cachedData).data)
-                let cachedNut = await AsyncStorage.getItem("nut")
-                setNut(JSON.parse(cachedNut).macros)
+    // Filter function for search
+    const filteredItems = [];
+    if (data[selectedHall]) {
+        Object.keys(data[selectedHall]).forEach(meal => {
+            if (meal !== "name" && meal !== "link") {
+                Object.keys(data[selectedHall][meal]).forEach(dish => {
+                    Object.keys(data[selectedHall][meal][dish]).forEach(item => {
+                        if (item.toLowerCase().includes(searchTerm.toLowerCase())) {
+                            filteredItems.push({
+                                meal,
+                                dish,
+                                item,
+                                tags: data[selectedHall][meal][dish][item]
+                            });
+                        }
+                    });
+                });
             }
-            else{
-                let response = await fetch("http://localhost:2022/api/get-meals-info");
+        });
+    }
+
+    // Loading data
+    useEffect(() => {
+        async function load() {
+            let cachedData = await AsyncStorage.getItem("menu");
+            let cachedNut = await AsyncStorage.getItem("nut")
+            let lastUpdated = await AsyncStorage.getItem("lastUpdated");
+            let currentDay = new Date().getDay();
+
+            if (lastUpdated && cachedData && cachedNut && lastUpdated == currentDay) {
+                setData(JSON.parse(cachedData).data);
+                setNut(JSON.parse(cachedNut).macros)
+
+            } else {
+                let response = await fetch(DBAPI_URI + "/get-meals-info");
                 let menuData = await response.json();
-                response = await fetch("http://localhost:2022/api/get-nutrition");
+                response = await fetch(DBAPI_URI + "/get-nutrition");
                 let nutData = await response.json();
 
                 setData(menuData.data);
                 setNut(nutData.macros)
-                await AsyncStorage.setItem("menu", JSON.stringify(menuData)); 
-                await AsyncStorage.setItem("nut", JSON.stringify(nutData)) 
+                await AsyncStorage.setItem("menu", JSON.stringify(menuData));
                 await AsyncStorage.setItem("lastUpdated", String(currentDay));
+                await AsyncStorage.setItem("nut", JSON.stringify(nutData));
             }
 
-            //Running the animation
-            Animated.timing(slideAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: false, 
-              }).start();
+            console.log('data: ' + JSON.stringify(data))
         }
-        load()
-    }, [])
+        load();
+    }, []);
 
     return (
-        <ScrollView className='bg-white'>
-
+        <ScrollView>
             
-            <View className = "bg-red-500 border-b-4 border-red-800 px-4 py-4">
-                <Text className = "text-4xl font-bold text-white mb-4">Today's Menu</Text>
-                <View className = "flex-row">
-                    {[
-                    { label: 'Y', value: 'Y' },
-                    { label: '51', value: 'North' },
-                    { label: 'S', value: 'South' },
-                ].map((diningHall, id) => {
-                    return  (
-                        <TouchableOpacity
-                        className = {`italic border-b-4 mx-4 ${
-                           selectedHall == diningHall.value ? "border-white text-yellow-300" : "border-red-800 text-white"
-                        } font-bold text-xl rounded-md w-8 text-center transition-all`}
-                        onPress={() => {
-                            setSelectedHall(diningHall.value)
-                            slideAnim.setValue(0)
-                            Animated.timing(slideAnim, {
-                                toValue: 1,
-                                duration: 1000,
-                                useNativeDriver: false, 
-                              }).start()
+            <FoodModal 
+                            visible={showFoodModal}
+                            data={selectedItem}
+                            onClose={() => setShowFoodModal(false)}
+                            mode = 'add'
+            />
 
-                        }}>{diningHall.label}</TouchableOpacity>
-                    )
-                })}
+            <ScrollView className={`bg-white ${showFoodModal ? "opacity-25" : "opacity-100"}`}>
+               
+                <View className="bg-black border-b-4 px-4 py-4">
+                    <Text className="text-4xl font-bold text-white mb-4">Today's Menu</Text>
+                    
+                    <TextInput
+                        placeholder="Search menu items..."
+                        className="text-xl border-2 border-black w-full p-2 bg-white"
+                        onChangeText={setSearchTerm}
+                        onFocus={() => setShowSearchResults(true)}
+                        onBlur={() => setShowSearchResults(false)}
+                        value={searchTerm}
+                    />
                 </View>
-            </View>
 
-            {Object.keys(data).includes(selectedHall) && <Text className = "text-3xl px-4 font-bold">{data[selectedHall].name}</Text>}
-            
-            {Object.keys(data).includes(selectedHall) && Object.keys(data[selectedHall]).map((meal, i) => {
-                if(meal != "name" && meal != "link"){
-                    return (
-                        <View>
-                        <Text className = "font-bold text-2xl px-4">{meal}</Text>
+                
+                <View className="flex-row justify-center my-4">
+                    {[
+                        { label: 'Yahentamitsi', value: 'Y' },
+                        { label: 'North', value: 'North' },
+                        { label: 'South', value: 'South' },
+                    ].map((diningHall, id) => (
+                        <TouchableOpacity
+                            key={id}
+                            className={`px-4 py-2 mx-2 rounded-lg ${
+                                selectedHall === diningHall.value 
+                                    ? "bg-black text-white" 
+                                    : "bg-gray-200"
+                            }`}
+                            onPress={() => setSelectedHall(diningHall.value)}
+                        >
+                            <Text className={selectedHall === diningHall.value ? "text-white" : "text-black"}>
+                                {diningHall.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
+                {/* Search results (when searching) */}
+                {showSearchResults && searchTerm && (
+                    <ScrollView className="border-2 border-gray-300 mx-4 mb-4 max-h-64">
+                        {filteredItems.length > 0 ? (
+                            filteredItems.map(({ item, tags }, idx) => (
 
-                        <View id = {`${selectedHall}.${meal}`} className = "h-full transition-all">
-                            {Object.keys(data[selectedHall][meal]).map((dish, idx) => {
-                                return (
-                                    <View>
-                                        <Text className = "italic text-lg px-4 my-8 font-semibold">{dish}</Text>
-                                        <View>
-                                            {Object.keys(data[selectedHall][meal][dish]).map((item, idy) => {
-                                                return (
-                                                    <View className = "h-32 py-2 border-b-4 border-red-500 w-full rounded-2xl px-12 inline">
-                                    
-                                                        <View className = "flex-col float-left w-72">
-                                                            <Text className='font-bold text-black italic text-xl'>{item.replace("&amp;", "and")}</Text>
-                                                            <View className = 'flex-row flex-wrap mt-4'>
-                                                                {data[selectedHall][meal][dish][item].map((tag, idz) => {
-                                                                    return (
-                                                                        <Image source = {tag[1]} className = "mx-2 my-2 w-6 h-6"></Image>
-                                                                    )
-                                                                })}
-                                                            </View>
-                                                        </View>
-                                                        
-                                                        
-
-                                                        {Object.keys(nut[item]).includes('calories_per_serving') && 
-                                                            <View className = "flex-row float-left items-centers">
-                                                                <Text className = 'font-bold text-xl px-4 w-32 h-24 text-red-600 mx-4 text-center'
-                                                                >{`Cal: ${nut[item]['calories_per_serving']}`}   </Text>
-
-                                                                <View className = 'float-right flex-col border-l-2 border-black'>
-
-                                                                <View className = "flex-row">
-
-                                                                    <View className = "captions font-bold">
-                                                                        <Text className = "font-bold text-lg italic">{`  C: ${nut[item]["Total Carbohydrate."]}`}  </Text>
-                                                                        <Text className = "font-bold text-lg italic">{`  P: ${nut[item]["Protein"]}`}  </Text>
-                                                                        <Text className = "font-bold text-lg italic">{`  F: ${nut[item]["Fat"]}`}  </Text>
-                                                                    </View>
-
-                                                                    <View className = "graphs">
-
-                                                                        <Animated.View style = {{
-                                                                            height: 30,
-                                                                            backgroundColor: "#7d5633",
-                                                                            borderTopColor: "black",
-                                                                            borderTopWidth: "2px",
-                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
-                                                                                inputRange: [0, 1],
-                                                                                outputRange: [0, 
-                                                                                    10 + (200 * Math.log(1+parseInt(nut[item]["Total Carbohydrate."].replace("g", ""), 10)))
-                                                                                ],  // Expands from 0px to 200px
-                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Total Carbohydrate."].replace("g", ""), 10)))}px`
-                                                                        }}>
-                                                                        </Animated.View>
-
-                                                                        <Animated.View style = {{
-                                                                            height: 30,
-                                                                            backgroundColor: "orange",
-                                                                            borderTopColor: "black",
-                                                                            borderTopWidth: "2px",
-                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
-                                                                                inputRange: [0, 1],
-                                                                                outputRange: [0, 
-                                                                                    10 + (200 * Math.log(1+parseInt(nut[item]["Protein"].replace("g", ""), 10)))
-                                                                                ],  // Expands from 0px to 200px
-                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Protein"].replace("g", ""), 10)))}px`
-                                                                        }}>
-                                                                        </Animated.View>
-
-                                                                        <Animated.View style = {{
-                                                                            height: 30,
-                                                                            backgroundColor: "#f0d330",
-                                                                            borderTopColor: "black",
-                                                                            borderTopWidth: "2px",
-                                                                            width: idx + idy < 5 ? slideAnim.interpolate({
-                                                                                inputRange: [0, 1],
-                                                                                outputRange: [0, 
-                                                                                    10 + (200 * Math.log(1+parseInt(nut[item]["Total Fat"].replace("g", ""), 10)))
-                                                                                ],  // Expands from 0px to 200px
-                                                                            }) : `${10 + (200 * Math.log(1+parseInt(nut[item]["Total Fat"].replace("g", ""), 10)))}px`
-                                                                        }}>
-                                                                        </Animated.View>
-
-                                    
-                                                                    </View>
-
-                                                                </View>
-
-                                                                </View>
-                                                                <View className = "w-24 h-full"></View>
-
-                                                            
-                                                            </View>
-                                                        }
-
-                                                        {!Object.keys(nut[item]).includes('calories_per_serving') && 
-                                                            <Text className = "italic text-red-400 text-lg">Nutrition not found for this item</Text>
-
-                                                        }
-                                                      
-                                                      <View className = "float-right flex-col">
-                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
-                                                                        <Image source = {require('assets/add.png')}></Image>
-                                                                    </TouchableOpacity>
-                                                                    <TouchableOpacity className = "text-5xl bold italic text-gray-400 my-2 float-right">
-                                                                        <Image source ={require('assets/heart.png')}></Image>
-                                                                    </TouchableOpacity>
-                                                                </View>
-
-                                                    </View>
-                                                )
-                                            })}
-                                        </View>
+                                <TouchableOpacity key={idx} className="border-b border-gray-200 p-3 hover:bg-gray-400"
+                                onPress={() => {
+                                    setSelectedItem({
+                                        "name" : item,
+                                        "data" : nut[item]
+                                    })
+                                    setShowFoodModal(true)
+                                }}
+                                >
+                                    <Text className="text-lg font-semibold">{item.replace("&amp;", "&")}</Text>
+                                    <View className="flex-row flex-wrap mt-2">
+                                        {tags.map((tag, idz) => (
+                                            <Image 
+                                                key={idz}
+                                                source={tag[1]} 
+                                                className="w-6 h-6 mx-1"
+                                            />
+                                        ))}
                                     </View>
-                                )
-                            })}
-                        </View>
-                        </View>
-                    )
-                }
-            })}
+                                </TouchableOpacity>
 
+                            ))
+                        ) : (
+                            <Text className="p-3 text-gray-500">No items found</Text>
+                        )}
+                    </ScrollView>
+                )}
 
+                {/* Regular menu display (when not searching) */}
+                {!showSearchResults && data[selectedHall] && (
+                    <ScrollView className="px-4">
+                        <Text className="text-2xl font-bold my-2">{data[selectedHall].name}</Text>
+                        
+                        {Object.keys(data[selectedHall]).map((meal, i) => {
+                            if (meal !== "name" && meal !== "link") {
+                                return (
+                                    <View key={i} className="mb-6">
+                                        <Text className="text-xl font-bold my-2">{meal}</Text>
+                                        
+                                        {Object.keys(data[selectedHall][meal]).map((dish, idx) => (
+                                            <View key={idx} className="mb-4">
+                                                <Text className="text-lg italic text-gray-600">{dish}</Text>
+                                                
+                                                {Object.keys(data[selectedHall][meal][dish]).map((item, idy) => (
+                                                    
+                                                    <TouchableOpacity
+                                                        key={idy} 
+                                                        className="border-b border-gray-200 py-3 hover:bg-gray-400"
+                                                        onPress={() => {
+                                                            setSelectedItem({
+                                                                "name" : item,
+                                                                "data" : nut[item]
+                                                            })
+                                                            setShowFoodModal(true)
+                                                        }}
+                                                    >
+                                                        <Text className="text-lg font-semibold">
+                                                            {item.replace("&amp;", "&")}
+                                                        </Text>
+                                                        <View className="flex-row flex-wrap mt-2">
+                                                            {data[selectedHall][meal][dish][item].map((tag, idz) => (
+                                                                <Image 
+                                                                    key={idz}
+                                                                    source={tag[1]} 
+                                                                    className="w-6 h-6 mx-1"
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    </TouchableOpacity>
+
+                                                ))}
+                                            </View>
+                                        ))}
+                                    </View>
+                                );
+                            }
+                        })}
+                    </ScrollView>
+                )}
+            </ScrollView>
         </ScrollView>
-    )
-}
+    );
+};

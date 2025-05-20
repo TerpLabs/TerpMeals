@@ -1,0 +1,5 @@
+ - make updates to the tracked meals update tracker without reload (tracker)
+ - dining hall restriction when creating a meal (mealModal)
+ - implement error throwing when creating a meal (mealModal)
+ - name saving when modifying or creating a meal (mealModal)
+ - make sure all data from a saved meal is reflected in mealModal

@@ -1,87 +1,195 @@
-import {Text, View, TextInput, Button} from "react-native"
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import {ACCESS_KEY_ID, SECRET_ACCESS_KEY} from "@env"
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import { DBAPI_URI } from '@env';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export default function Register() {
+  const navigation = useNavigation();
+  // State for form values
+  const [form, setForm] = useState({
+    username: "",
+    password: "",
+    email: "",
+    passwordConfirm: "",
+  });
 
-export default ({navigation}) => {
+  // Handle input changes
+  const handleChange = (name, value) => {
+    setForm({
+      ...form,
+      [name]: value,
+    });
+  };
 
-    //State
-    const [username, setUsername] = useState("")
-    const [password, setPassword] = useState("")
-    const [email, setEmail] = useState("")
-    const [err, setErr] = useState("")
+  // Handle button click to submit form
+  const handleButtonClick = async () => {
+    try {
+      if (form.username && form.password && form.passwordConfirm && form.email) {
+        if (form.password !== form.passwordConfirm) {
+          Alert.alert("Error", "Passwords don't match");
+        } else {
+          const body = {
+            username: form.username,
+            password: form.password,
+            email: form.email
+          };
+          const { data } = await axios.post(
+            DBAPI_URI + "/users/create",
+            body
+          );
 
-    //Lambda Config
-    const decoder = new TextDecoder('utf-8');
-
-    const client = new LambdaClient({
-        credentials: {
-                accessKeyId: ACCESS_KEY_ID,  
-                secretAccessKey: SECRET_ACCESS_KEY  
-            },
-            region: 'us-east-1'
-        });
-
-    
-    async function invoke(payload){
-      const input = { // InvocationRequest
-        FunctionName: "TerpMealsDBApi", // required
-        Payload: JSON.stringify(payload) //For get: JSON.stringify({"GET": true})
-      };
-      const command = new InvokeCommand(input);
-      const response = await client.send(command);
-      const decodedPayload = new TextDecoder("utf-8").decode(response.Payload);
-      return JSON.parse(decodedPayload).body
-    }
-
-    async function handleCreate() {
-        if (username == "" || password == "") {
-          setErr("Username and Password can't be empty");
-        }else{
-            const existing = await invoke({ command: "find", email: email })
-            if(existing != '[]'){
-                setErr("Email alreay in use")
-            }
-            else{
-                await invoke({command: "add", username: username, password: password, email: email, targets: []})
-                setErr("Successfully created account")
-            }
+          await AsyncStorage.setItem("userData", data)
+          navigation.navigate('TabNavigator', { screen: 'Menu' });
         }
+      } else {
+        Alert.alert("Error", "Please fill out all fields!");
+      }
+    } catch (e) {
+      console.error(e.message);
+      Alert.alert("Error", "An error occurred. Please try again.");
     }
-    
+  };
 
+  async function checkForIfLoggedIn(){
+    if(await AsyncStorage.getItem("userData")){
+      return true
+    }
+    return false
+  }
 
-    return (
-        <View className = "items-center">
-            <Text className = "text-xl font-bold">Get started with TerpMeals!</Text>
-            <Text>Create an account to get started</Text>
-            
-            <View>
-            <Text aria-label="email" nativeID="email">Email</Text>
-            <TextInput aria-label="email" aria-labelledby="email" onChangeText={setEmail} />
-            </View>
+  useEffect(() => {
+    if(checkForIfLoggedIn()){
+      navigation.navigate('TabNavigator', { screen: 'Menu' })
+    }
+  }, [])
 
-            <View>
-            <Text aria-label="username" nativeID="username">Username</Text>
-            <TextInput aria-label="username" aria-labelledby="username" onChangeText={setUsername} />
-            </View>
+  return (
+    <View style={styles.container}>
+      <Image
+        source={require("../assets/logo.png")}
+        style={styles.logo}
+      />
+      <Text style={styles.title}>
+        <Text style={styles.hooText}>Terp</Text>Meals
+      </Text>
+      <Text style={styles.subtitle}>
+        streamlining meal planning for college dining halls.
+      </Text>
 
-            <View>
-            <Text aria-label="pswd" nativeID="pswd">Password</Text>
-            <TextInput aria-label="pswd" aria-labelledby="pswd" onChangeText={setPassword} />
-            </View>
-
-            <Button title = "Create" onPress={handleCreate}></Button>
-
-            <Text className = "text-red-500 font-bold">{err}</Text>
-
-
-            <Text className = "font-italic" onPress={() => {
-                navigation.navigate("Login")
-            }}>Already have an account?</Text>
-            <Text className = "font-italic">Enter as guest</Text>
-
-        </View>
-    )
+      <View style={styles.formContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          value={form.username}
+          onChangeText={(text) => handleChange("username", text)}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={form.email}
+          onChangeText={(text) => handleChange("email", text)}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={form.password}
+          onChangeText={(text) => handleChange("password", text)}
+          secureTextEntry
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm Password"
+          value={form.passwordConfirm}
+          onChangeText={(text) => handleChange("passwordConfirm", text)}
+          secureTextEntry
+        />
+        <TouchableOpacity style={styles.button} onPress={handleButtonClick}>
+          <Text style={styles.buttonText}>Register</Text>
+        </TouchableOpacity>
+        <Text style={styles.loginText}>
+          Already have an account?{" "}
+          <Text
+            style={styles.loginLink}
+            onPress={() => navigation.navigate("Login")}
+          >
+            Log in
+          </Text>
+        </Text>
+      </View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+    justifyContent: "center",
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#fad72a",
+    marginBottom: 4,
+  },
+  hooText: {
+    color: "#e31717",
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+    color: "#64748b",
+    marginBottom: 40,
+  },
+  formContainer: {
+    alignItems: "center",
+  },
+  input: {
+    width: "75%",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 4,
+    padding: 12,
+    marginBottom: 20,
+    color: "#1e293b",
+  },
+  button: {
+    width: "75%",
+    backgroundColor: "#e31717",
+    borderRadius: 4,
+    padding: 12,
+    marginTop: 20,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  loginText: {
+    marginTop: 40,
+    color: "#fad72a",
+  },
+  loginLink: {
+    color: "#e31717",
+  },
+});

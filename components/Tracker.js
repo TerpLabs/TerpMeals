@@ -1,114 +1,74 @@
-import { Text, View, ScrollView, TextInput, TouchableOpacity, Image, Animated } from 'react-native';
-import { useState, useEffect, useRef } from "react";
+import { Text, View, ScrollView, TextInput, TouchableOpacity, Touchable } from 'react-native';
+import { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DBAPI_URI } from '@env';
+import FoodModal from './modals/FoodModal';
+import { BarChart } from "react-native-gifted-charts";
+
 
 export default ({ navigation }) => {
     // States
     const [nut, setNut] = useState({});
-    const [trackedNut, setTrackedNut] = useState({});
-    const [trackedMeals,setTrackedMeals] = useState({});
     const [searchTerm, setSearchTerm] = useState("");
     const [showItemSelection, setShowItemSelection] = useState(false);
+    const [selectedItem, setSelectedItem] = useState({})
+    const [showFoodModal, setShowFoodModal] = useState(false)
 
-    //Custom state for showing preioritized macros for later setting it 
-    const [showedMacros, setShowedMacros] = useState({
-        "Carb" : "Total Carbohydrate.",
-        "Protein" : "Protein",
-        "Fat" : "Total Fat" 
-    })
+    const [trackedNut, setTrackedNut] = useState({})
+    const [trackedMeals, setTrackedMeals] = useState({})
 
-    //For matching graph and macro colors
-    const [colors, setColors] = useState(["#cf9e2b", "#a82bcf", "#0ab2cc"])
+    const [modalMode, setModalMode] = useState('add') //Either 'add' or 'replace' if we're adding a meal or completely changing meals
 
-    //For dynamically updating servingsizevalues by key
-    const [servingSizes, setServingSizes] = useState({})
+    const [graphData, setGraphData] = useState([])
+    const [prevServings, setPrevServings] = useState(1)
 
-     //Sliding animation
-    const slideAnim = useRef(new Animated.Value(0)).current
-    
 
-    //For updating tracker:
-    async function updateItem(item, servings, type) {
-      
-        if (servings > 0 && Object.keys(nut[item]).includes("calories_per_serving")) {
-           
-            let updatedTrackedNut = { ...trackedNut };
-    
-            for (let nutrient of Object.keys(nut[item])) {
-                try {
-                    let value = nut[item][nutrient];
-                    let servings_for_this_item = servings
-    
-                    if (value.includes("mg")) {
-                        value = value.replace("mg", "");
-                        servings_for_this_item /= 1000;
-                    }
-    
-                    value = parseFloat(value.replace("g", ""));
-                    value = value * servings_for_this_item
-    
-                    // Updating the local copy of the nutrient
-                    let current_value = 0;
-                    if (updatedTrackedNut[nutrient]) {
-                        current_value = parseFloat(updatedTrackedNut[nutrient]);
-                    }
-                    current_value += value
-                    if(type == "replace"){
-                        current_value = value
-                       
-                    }
-                    updatedTrackedNut[nutrient] = current_value;
-                } catch (err) {
-                    console.log(err); // If there's an error, ignore this nutrient
-                }
-            }
-    
-            // State + AsyncStorage update
-            setTrackedNut(updatedTrackedNut);
-            let meals = {...trackedMeals}
-            if(!Object.keys(meals).includes(item)){
-                meals[item] = 0 //n servings
-            }
-            meals[item] = meals[item] + servings
-            if(type == 'replace'){
-             
-                meals[item] = servings
-            }
 
-            setTrackedMeals(meals)
-            await AsyncStorage.setItem("trackedMeals", JSON.stringify(meals))
-            await AsyncStorage.setItem("trackedNut", JSON.stringify(updatedTrackedNut));
+    //String utils :)
+    const wrapLabel = (label, maxLen = 6) => {
+        if (label.length <= maxLen) return label;
+        const words = label.split(' ');
+        if (words.length > 1) {
+          const mid = Math.floor(words.length / 2);
+          return words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ');
+        } else {
+          return label.slice(0, maxLen) + '\n' + label.slice(maxLen);
         }
-
-        //Re-running animation 
-        slideAnim.setValue(0)
-        Animated.timing(slideAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: false, 
-        }).start()
+      };
+    function remove_last(str){
+        return str.substring(0, str.length - 1)
     }
 
-    //For Removing an item
-    async function removeItem(meal){
-        let meal_servings = trackedMeals[meal]
 
-        //Subtracting from trackedNut
-        let updatedTrackedNut = {...trackedNut}
-        Object.keys(updatedTrackedNut).forEach(key => {
-            if(nut[meal][key]){
-                updatedTrackedNut[key] = updatedTrackedNut[key] - (meal_servings * nut[meal][key])
+    //Updating graphData whenever nutrition data is updated
+    useEffect(() => {
+        let newGraphData = []
+        Object.keys(trackedNut).forEach(nutrientName => {
+            let nutrient = trackedNut[nutrientName]
+            if(nutrient['units'].includes("g") && nutrientName != "Carbohydrate" && nutrientName != "Fat"){
+                let amnt = nutrient['amount']
+                if(nutrient['units'].includes("mg")){
+                    amnt /= 1000
+                }
+                if (amnt > 0.001) { 
+                    newGraphData.push({
+                        value: Math.abs(Math.log(amnt)) * 10, //Scaling for graph
+                        labelComponent: () => (
+                            <Text style={{fontSize: 10, textAlign: 'center', color: 'black'}}>
+                              {wrapLabel(nutrientName)}
+                            </Text>
+                          ), //Adding newlines,
+                        frontColor: '#177AD5',
+                        topLabelComponent: () => (
+                            <Text style={{color: 'black', fontSize: 12}}>{ Math.round(amnt * 100) / 100}</Text> // actual amount
+                          ),
+                    });
+                }
             }
         })
 
-        //Removing key & updating everything 
-        let updatedTrackedMeals = {...trackedMeals}
-        updatedTrackedMeals[meal] = 0
-        setTrackedMeals(updatedTrackedMeals)
-        setTrackedNut(updatedTrackedNut)
-        await AsyncStorage.setItem("trackedMeals", JSON.stringify(updatedTrackedMeals))
-        await AsyncStorage.setItem("trackedNut", JSON.stringify(updatedTrackedNut))
-    }
+        setGraphData(newGraphData)
+    }, [trackedNut])
 
     // Loading data on page reload
     useEffect(() => {
@@ -116,260 +76,228 @@ export default ({ navigation }) => {
             try {
                 let cachedData = await AsyncStorage.getItem("nut");
                 let lastUpdated = await AsyncStorage.getItem("lastUpdated");
-                let cachedNutrition = await AsyncStorage.getItem("trackedNut");
-                let cachedMeals = await AsyncStorage.getItem("trackedMeals");
                 let currentDay = new Date().getDay();
 
-                if (
-                    cachedMeals && cachedNutrition && lastUpdated && cachedData &&
-                    lastUpdated !== "null" && cachedData !== "null" && lastUpdated == currentDay
-                ) {
+
+                if (cachedData && lastUpdated && lastUpdated == currentDay) {
                     setNut(JSON.parse(cachedData).macros);
-                    setTrackedNut(JSON.parse(cachedNutrition));
-                    setTrackedMeals(JSON.parse(cachedMeals));
                 } else {
-                    // Fetch new data if outdated
-                    let response = await fetch("http://localhost:2022/api/get-nutrition");
+                    // Case of it being a new day
+                    let response = await fetch(DBAPI_URI + "/get-nutrition");
                     let nutData = await response.json();
 
                     setNut(nutData.macros);
-                    setTrackedNut({});
-                    setTrackedMeals({});
-
                     await AsyncStorage.setItem("nut", JSON.stringify(nutData));
                     await AsyncStorage.setItem("lastUpdated", String(currentDay));
-                    await AsyncStorage.setItem("trackedNut", JSON.stringify({}));
-                    await AsyncStorage.setItem("trackedMeals", JSON.stringify({}));
+
+                    await AsyncStorage.setItem("trackedNut", "{}")
+                    await AsyncStorage.setItem("trackedMeals", "{}")
                 }
+
+                //Handling cache separately 
+                let trackedNut = await AsyncStorage.getItem("trackedNut")
+                let trackedMeals = await AsyncStorage.getItem('trackedMeals')
+                trackedNut =  trackedNut ? JSON.parse(trackedNut) : {}
+                trackedMeals = trackedMeals ? JSON.parse(trackedMeals) : {}
+                setTrackedNut(trackedNut)
+                setTrackedMeals(trackedMeals)
+
+            
             } catch (error) {
                 console.error("Error loading nutrition data:", error);
             }
         }
 
         load();
-
-        //anim 
-        Animated.timing(slideAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: false, 
-    }).start()
-
     }, []);
 
     return (
-        <ScrollView className = "bg-white">
-            <View className="bg-black border-b-4 px-4 py-4">
-                <Text className="text-4xl font-bold text-white mb-4">Today's Nutrition</Text>
-            </View>
-
-            <View className="items-center ">
-                <Text className="text-3xl text-red-600 font-bold">
-                    {trackedNut?.calories_per_serving ?? 0} total calories
-                </Text>
-
-                {Object.keys(trackedNut).includes("calories_per_serving") && 
-                <View className = "graphs flex-row align-bottom">
-                    {Object.keys(showedMacros).map((label, id) => {
-                        const key = showedMacros[label]
-                        const color = colors[id]
-
-                        //Calculating a scale for each element so that 
-                        let attrs = Object.values(showedMacros).map(key => 10 + (50 * Math.log(1 + trackedNut[key])))
-                        let max_attr = Math.max(...attrs)
-                        let factor = 1
-                        if(max_attr > 275){
-                            factor = 275 / max_attr
-                        }
-                        console.log(factor)
-
-                        return (<View key = {id} className = "flex-col-reverse h-86 w-28 items-center float-bottom">
-
-                            <Text className = "font-bold text-lg rotate-30">{label}</Text>
-                            
-                            <Animated.View style = {{
-                                width: "75px",
-                               backgroundColor: color,
-                                border: "2px solid black",
-                                height: slideAnim.interpolate({
-                                    inputRange : [0, 1],
-                                    outputRange : [0, 
-                                        factor * (10 + (50 * Math.log(1 + trackedNut[key])))
-                                    ]
-                                })
-                            }}>
-                            </Animated.View>
-
-                            <Text style = {{"color" : color}} className = "font-bold text-lg">{Math.round(trackedNut[key] * 1000) / 1000}</Text>
-                            
-                        </View>)
-                    })}
+        <View className='h-full'>
+            <FoodModal 
+                    visible={showFoodModal}
+                    data={selectedItem}
+                    onClose={() => setShowFoodModal(false)}
+                    mode={modalMode}
+                    nutState={setTrackedNut}
+                    mealsState={setTrackedMeals}
+                    previousServings={prevServings}
+            />
+            
+            <ScrollView className={`bg-white ${showFoodModal ? "opacity-25" : "opacity-100"}`}>
+                <View className="bg-black border-b-4 px-4 py-4">
+                    <Text className="text-4xl font-bold text-white mb-4">Tracked meals</Text>
                 </View>
-                }
 
-
-                <TextInput
-                    placeholder="Search for a dish to track it"
-                    className="text-xl border-2 border-black w-5/6"
-                    onFocus={() => setShowItemSelection(true)}
                     
-                    onChangeText={setSearchTerm}
-                />
-                
-                <ScrollView className={`border-white transition-all w-5/6 ${showItemSelection ? ' border-2 h-fit max-h-48' : ' border-0 h-0'}`}>
-                {Object.keys(nut).map((meal, idx) => {
-                    if(searchTerm == '' || meal.toLowerCase().includes(searchTerm.toLowerCase())){
-                        if(!Object.keys(servingSizes).includes(idx.toString())){
-                            let serving_sizes = servingSizes
-                            serving_sizes[idx.toString()] = '1'
-                            setServingSizes(serving_sizes)
-                        }
-                        return (
-                            <View className="border-b-2 bg-gray-200 bg-opacity-25 border-gray-500 w-full h-14 flex-row items-center px-4 justify-between pointer-events-auto">
-
-                            <View className="flex-col">
-
-                                    <Text 
-                                    className={`text-grey-700 ${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}
-                                    >{meal.replace("&amp;", "")} </Text>
-
-                                    {Object.keys(nut[meal]).includes("calories_per_serving") ? (
-                                    <View className="flex-row">
-
-                                            <Text className="text-white text-xs font-bold text-center bg-red-600 w-10 h-4 mx-1">
-                                            {servingSizes[idx.toString()] == "" ? nut[meal]["calories_per_serving"].replace("g", "") : 
-                                            Math.round(parseInt(nut[meal]["calories_per_serving"].replace("g", "")) * parseFloat(servingSizes[idx.toString()]) * 1000) / 1000
-                                            }
-                                            </Text>
 
 
-                                            {Object.values(showedMacros).map((key, idy) => {
-                                                return (
-                                                <Text key = {idy} style = {{
-                                                    "backgroundColor" : colors[idy]
-                                                }}
-                                                className = "text-white text-xs font-bold text-center w-8 h-4 mx-1"
-                                                >
-                                                {servingSizes[idx.toString()] == "" ? nut[meal][key].replace("g", "") : 
-                                                Math.round(parseInt(nut[meal][key].replace("g", "")) * parseFloat(servingSizes[idx.toString()]) * 1000) / 1000
-                                                }
-                                                </Text>)
-                                            })}
-
-                                    </View>
-                                    ) : (
-                                    <Text className="text-lg text-red-500 italic">Nutrition Not Available</Text>
-                                    )}
-                            </View>
-
-                            {/* Right Section */}
-                            <View className="flex-row items-center">
-                
-
-                                <TextInput
-                                className="w-8 h-8"
-                                value = {servingSizes[idx.toString()]}
-                                onChangeText={(val) => {
-                                    let nums = val.match("[0-9]*(.[0-9]*)?")[0]
-                                    let serving_sizes = { ...servingSizes }
-                                    serving_sizes[idx.toString()] = nums
-                                    setServingSizes(serving_sizes)
-                                }}
-                                />
-
-                                <TouchableOpacity
-                                className="text-5xl bold text-gray-400 my-2"
-                                onPress={() => {
-                                    let servings = servingSizes[idx.toString()]
-                                    servings = servings.match("[0-9]*(.[0-9]*)?")[0]
-                                    if(servings == ""){
-                                        servings = "1"
-                                    }
-                                    servings = parseFloat(servings)
-                                    updateItem(meal, servings, "add")
-                                }}
-                                >
-                                <Image source={require("assets/add.png")} />
-                                </TouchableOpacity>
-                            </View>
-                            </View>
-
-                        )
-                    }
-                    else{ return <View></View> }
-                })}
-                </ScrollView>
-            </View>
-
-            <View className = "mt-8">
-                <Text className = "font-bold text-2xl px-4">Tracked Meals</Text>
-                {Object.keys(trackedMeals).filter(meal => trackedMeals[meal] > 0).map((meal, idx) => {
-                    return (
-                        <View className="flex-row border-b-2 py-2 mx-4 border-gray-700 border-t-2 bg-gray-500 bg-opacity-10 justify-between pointer-events-auto" key = {idx}>
-                                        
-                                    <View className = "flex-col">
-
-                                        <Text className={`${meal.length < 20 ? 'text-lg' : 'text-md'} h-full`}>
-                                            {meal.replace("&amp;", "")} </Text>
+                <View className="items-center p-4">
+                    <TextInput
+                        placeholder="Search for a dish"
+                        className="text-xl border-2 border-black w-full p-2"
+                        onFocus={() => setShowItemSelection(true)}
+                        onChangeText={setSearchTerm}
+                        value={searchTerm}
+                    />
+                    
+                    {showItemSelection && (
+                        <ScrollView className="border-2 border-gray-300 w-full max-h-64 mt-2">
+                            {Object.keys(nut)
+                                .filter(meal => 
+                                    searchTerm === '' || 
+                                    meal.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map((meal, idx) => (
+                                    <TouchableOpacity key={idx} className="border-b border-gray-200 p-2 hover:bg-gray-400"
+                                    onPress={() => {
+                                        setSelectedItem({
+                                            "name" : meal,
+                                            "data" : nut[meal]
+                                        })
+                                        setModalMode("add")
+                                        setPrevServings(1)
+                                        setShowFoodModal(true)
+                                    }}
+                                    >
+                                        <Text className="text-lg">
+                                            {meal.replace("&amp;", "&")}
+                                        </Text>
 
                                         {Object.keys(nut[meal]).includes("calories_per_serving") ? (
-                                        <View className="flex-row">
+                                            <View className = "flex-row">
 
-                                                <Text className="text-white font-bold text-center bg-red-600 w-10 h-4 text-xs mx-1">
-                                                {
-                                                Math.round(parseInt(nut[meal]["calories_per_serving"].replace("g", "")) * trackedMeals[meal] * 1000) / 1000
-                                                }
+                                                <Text className="text-sm text-gray-600">
+                                                    Calories: {nut[meal]["calories_per_serving"] + "    "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Carb: {remove_last(nut[meal]["Total Carbohydrate."]) + "   "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Protein: {remove_last(nut[meal]["Protein"]) + "  "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Fat: {remove_last(nut[meal]["Total Fat"]) + "    "}
                                                 </Text>
 
-
-                                                {Object.values(showedMacros).map((key, idy) => {
-                                                    return (
-                                                    <Text key = {idy} style = {{
-                                                        "backgroundColor" : colors[idy]
-                                                    }}
-                                                    className = "text-white text-xs font-bold text-center w-8 h-4 mx-1"
-                                                    >
-                                                    {
-                                                    Math.round(parseInt(nut[meal][key].replace("g", "")) * trackedMeals[meal] * 1000) / 1000
-                                                    }
-                                                    </Text>)
-                                                })}
-
-                                        </View>
+                                            
+                                            </View>
                                         ) : (
-                                        <Text className="text-lg text-red-500 italic">Nutrition Not Available</Text>
+                                            <Text className="text-sm text-red-500 italic">
+                                                Nutrition Not Available
+                                            </Text>
                                         )}
-                                    </View>
+
+                                    </TouchableOpacity>
+                                ))
+                            }
+                        </ScrollView>
+                    )}
+
+                </View>
 
 
-                                    <View className="flex-row items-center">
+                {Object.keys(trackedNut).includes("calories_per_serving") && 
+                        <Text className = "text-2xl font-bold m-auto">Total Calories: {trackedNut['calories_per_serving']['amount']}</Text>
+                    }
 
-                                        <TextInput
-                                        className="w-8 h-8"
-                                        placeholder = {trackedMeals[meal]}
-                                        onChangeText={(val) => {
-                                            let servings = val.match("[0-9]*(.[0-9]*)?")[0]
-                                            if(servings != "" && servings != "." && servings != 0){
-                                                servings = parseFloat(servings)
-                                                updateItem(meal, servings, "replace")
-                                            }
+                <View style = {{ transform: [{ scale: 0.8 }] }}>
+                    {graphData.length > 0 ? (
+                                    <ScrollView horizontal vertical className = "m-auto w-auto" style = {{container: {
+                                        flex: 1,
+                                        justifyContent: 'center', // Centers vertically
+                                        alignItems: 'center', // Centers horizontally
+                                      }}}>
+
+                                       <BarChart
+                                        data={graphData}
+                                        height={graphData.length * 75} // keep this
+                                        barWidth={40}
+                                        spacing={40}
+                                        initialSpacing={0} // removes extra space at the start
+                                        endSpacing={0}     // removes extra space at the end
+                                        roundedTop
+                                        roundedBottom
+                                        hideRules
+                                        yAxisThickness={0}
+                                        yAxisTextStyle={{color: 'gray'}}
+                                        noOfSections={4}
+                                        xAxisLabelsVerticalShift={0}  // Adjusted to 0 for better alignment
+                                        labelsExtraHeight={10}         // Reduced height to avoid pushing labels too far
+                                        labelWidth={50}               // Ensure enough space for the longest label
+                                        xAxisLabelTextStyle={{
+                                            fontSize: 10,
+                                        
+                                            color: 'black',
+                                            paddingBottom: 5,            // Optional: adjust vertical alignment
                                         }}
+                                        xAxisLength={graphData.length * 50}  // Adjust length to fit all labels properly
                                         />
 
-                                        <TouchableOpacity
-                                        className="text-5xl bold italic text-gray-400 my-2"
-                                        onPress={() => {
-                                            removeItem(meal)
-                                        }}
-                                        >
-                                        <Image source={require("assets/remove.png")} />
-                                        </TouchableOpacity>
+                    
+                                    </ScrollView>
+                                    ) : (
+                                        <Text >No nutrition data available</Text>
+                                    )}
+                </View>
 
-                                    </View>
-                        </View>
-                    )
-                })}
-            </View>
-        </ScrollView>
+
+            <Text className = "font-bold text-xl">Today's Meals:</Text>
+            {Object.keys(trackedMeals).map(food => {
+    
+                return (
+                    <TouchableOpacity key = {food} className="border-b border-gray-200 p-2 hover:bg-gray-400"
+                    onPress={() => {
+                        setSelectedItem({
+                            "name" : food,
+                            "data" : nut[food]
+                        })
+                        setModalMode("edit")
+                        setPrevServings(trackedMeals[food])
+                        setShowFoodModal(true)
+                    }}
+                    >
+                                        <View className='flex-row'>
+                                            <Text className="text-lg">
+                                                {food.replace("&amp;", "&") + "   "}
+                                            </Text>
+                                            <Text className="italic text-md">
+                                                Servings: {trackedMeals[food]} 
+                                            </Text>
+                                        </View>
+
+                                        {Object.keys(nut[food]).includes("calories_per_serving") ? (
+                                            <View className = "flex-row">
+
+                                                <Text className="text-sm text-gray-600">
+                                                    Calories: {nut[food]["calories_per_serving"] + "    "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Carb: {remove_last(nut[food]["Total Carbohydrate."]) + "   "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Protein: {remove_last(nut[food]["Protein"]) + "  "}
+                                                </Text>
+                                                <Text className="text-sm text-gray-600">
+                                                    Fat: {remove_last(nut[food]["Total Fat"]) + "    "}
+                                                </Text>
+
+                                            
+                                            </View>
+                                        ) : (
+                                            <Text className="text-sm text-red-500 italic">
+                                                Nutrition Not Available
+                                            </Text>
+                                        )}
+
+                    </TouchableOpacity>
+                )
+            })}
+
+                
+            </ScrollView>
+
+
+            
+        </View>
     );
 };
