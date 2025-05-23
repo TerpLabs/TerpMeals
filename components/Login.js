@@ -42,7 +42,7 @@ export default function Login() {
         );
         console.log(data)
 
-        await AsyncStorage.setItem("userData", data)
+        await AsyncStorage.setItem("userData", JSON.stringify(data))
 
         navigation.navigate('TabNavigator', { screen: 'Menu' });
       } else {

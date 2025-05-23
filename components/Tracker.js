@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DBAPI_URI } from '@env';
 import FoodModal from './modals/FoodModal';
 import { BarChart } from "react-native-gifted-charts";
+import { getTrackedNut, getTrackedMeals } from 'utils/cache_and_data';
 
 
 export default ({ navigation }) => {
@@ -45,7 +46,8 @@ export default ({ navigation }) => {
         let newGraphData = []
         Object.keys(trackedNut).forEach(nutrientName => {
             let nutrient = trackedNut[nutrientName]
-            if(nutrient['units'].includes("g") && nutrientName != "Carbohydrate" && nutrientName != "Fat"){
+            if(nutrient['units'] && nutrient['amount'] 
+                && nutrient['units'].includes("g") && nutrientName != "Carbohydrate" && nutrientName != "Fat"){
                 let amnt = nutrient['amount']
                 if(nutrient['units'].includes("mg")){
                     amnt /= 1000
@@ -73,39 +75,8 @@ export default ({ navigation }) => {
     // Loading data on page reload
     useEffect(() => {
         async function load() {
-            try {
-                let cachedData = await AsyncStorage.getItem("nut");
-                let lastUpdated = await AsyncStorage.getItem("lastUpdated");
-                let currentDay = new Date().getDay();
-
-
-                if (cachedData && lastUpdated && lastUpdated == currentDay) {
-                    setNut(JSON.parse(cachedData).macros);
-                } else {
-                    // Case of it being a new day
-                    let response = await fetch(DBAPI_URI + "/get-nutrition");
-                    let nutData = await response.json();
-
-                    setNut(nutData.macros);
-                    await AsyncStorage.setItem("nut", JSON.stringify(nutData));
-                    await AsyncStorage.setItem("lastUpdated", String(currentDay));
-
-                    await AsyncStorage.setItem("trackedNut", "{}")
-                    await AsyncStorage.setItem("trackedMeals", "{}")
-                }
-
-                //Handling cache separately 
-                let trackedNut = await AsyncStorage.getItem("trackedNut")
-                let trackedMeals = await AsyncStorage.getItem('trackedMeals')
-                trackedNut =  trackedNut ? JSON.parse(trackedNut) : {}
-                trackedMeals = trackedMeals ? JSON.parse(trackedMeals) : {}
-                setTrackedNut(trackedNut)
-                setTrackedMeals(trackedMeals)
-
-            
-            } catch (error) {
-                console.error("Error loading nutrition data:", error);
-            }
+            setTrackedNut(await getTrackedNut())
+            setTrackedMeals(await getTrackedMeals())
         }
 
         load();
@@ -243,7 +214,9 @@ export default ({ navigation }) => {
 
             <Text className = "font-bold text-xl">Today's Meals:</Text>
             {Object.keys(trackedMeals).map(food => {
-    
+                if(nut[food] == undefined || nut[food] == null){
+                    console.log(food)
+                }
                 return (
                     <TouchableOpacity key = {food} className="border-b border-gray-200 p-2 hover:bg-gray-400"
                     onPress={() => {
@@ -265,7 +238,7 @@ export default ({ navigation }) => {
                                             </Text>
                                         </View>
 
-                                        {Object.keys(nut[food]).includes("calories_per_serving") ? (
+                                        {(nut[food] && Object.keys(nut[food]).includes("calories_per_serving")) ? (
                                             <View className = "flex-row">
 
                                                 <Text className="text-sm text-gray-600">

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DBAPI_URI } from '@env';
 import FoodModal from './modals/FoodModal';
+import { getMenu, getNutrition } from 'utils/cache_and_data';
 
 export default ({ navigation }) => {
     // State
@@ -39,29 +40,8 @@ export default ({ navigation }) => {
     // Loading data
     useEffect(() => {
         async function load() {
-            let cachedData = await AsyncStorage.getItem("menu");
-            let cachedNut = await AsyncStorage.getItem("nut")
-            let lastUpdated = await AsyncStorage.getItem("lastUpdated");
-            let currentDay = new Date().getDay();
-
-            if (lastUpdated && cachedData && cachedNut && lastUpdated == currentDay) {
-                setData(JSON.parse(cachedData).data);
-                setNut(JSON.parse(cachedNut).macros)
-
-            } else {
-                let response = await fetch(DBAPI_URI + "/get-meals-info");
-                let menuData = await response.json();
-                response = await fetch(DBAPI_URI + "/get-nutrition");
-                let nutData = await response.json();
-
-                setData(menuData.data);
-                setNut(nutData.macros)
-                await AsyncStorage.setItem("menu", JSON.stringify(menuData));
-                await AsyncStorage.setItem("lastUpdated", String(currentDay));
-                await AsyncStorage.setItem("nut", JSON.stringify(nutData));
-            }
-
-            console.log('data: ' + JSON.stringify(data))
+            setData(await getMenu())
+            setNut(await getNutrition())
         }
         load();
     }, []);

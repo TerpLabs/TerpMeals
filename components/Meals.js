@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DBAPI_URI } from '@env';
 import MealModal from './modals/MealModal';
+import { getMeals, getNutrition, updateMeals } from 'utils/cache_and_data';
 
 export default ({ navigation }) => {
     const [nut, setNut] = useState({});
@@ -50,30 +51,8 @@ export default ({ navigation }) => {
 
         //Here, you should only be able to view a meal, and not track it or get tracking information. 
         async function load() {
-            try {
-                let cachedData = await AsyncStorage.getItem("nut");
-                let lastUpdated = await AsyncStorage.getItem("lastUpdated");
-                let currentDay = new Date().getDay();
-
-
-                if (cachedData && lastUpdated && lastUpdated == currentDay) {
-                    setNut(JSON.parse(cachedData).macros); 
-                } else {
-                    // Case of it being a new day
-                    let response = await fetch(DBAPI_URI + "/get-nutrition");
-                    let nutData = await response.json();
-
-                    setNut(nutData.macros);
-                    await AsyncStorage.setItem("nut", JSON.stringify(nutData));
-                    await AsyncStorage.setItem("lastUpdated", String(currentDay));
-                }
-
-            
-
-            
-            } catch (error) {
-                console.error("Error loading nutrition data:", error);
-            }
+            setNut(await getNutrition())
+            setMeals(await getMeals())
         }
 
         load();
@@ -91,7 +70,10 @@ export default ({ navigation }) => {
                     currentMeal = {meal}
                     allNut = {nut}
                     existingMeals = {meals}
-                    setMeals = {setMeals}
+                    setMeals = {(newMeals) => {
+                        setMeals(newMeals)
+                        updateMeals(newMeals)
+                    }}
             />
 
           
@@ -105,46 +87,49 @@ export default ({ navigation }) => {
 
                 
             {Object.keys(meals).map((name, idx) => (
-                <TouchableOpacity 
-                key = {idx}
-                onPress={() => {
-                    setMealName(name)
-                    setCurrentMeal(meals[name])
-                    setShowMealModal(true)
-                }}
-                >
-                  
-                    <Text className="text-lg">
-                        {name}
-                    </Text>
-
-                    {Object.keys(meals[name].nut).includes("calories_per_serving") ? (
-                        <View className = "flex-row">
-
-                            <Text className="text-sm text-gray-600">
-                                Calories: {Math.round(meals[name].nut["calories_per_serving"].amount * 100) / 100 + "    "}
-                            </Text>
-                            <Text className="text-sm text-gray-600">
-                                Carb: {Math.round(meals[name].nut["Total Carbohydrate."].amount * 100) / 100 + "   "}
-                            </Text>
-                            <Text className="text-sm text-gray-600">
-                                Protein: {Math.round(meals[name].nut["Protein"].amount * 100) / 100 + "  "}
-                            </Text>
-                            <Text className="text-sm text-gray-600">
-                                Fat: {Math.round(meals[name].nut["Total Fat"].amount * 100) / 100 + "    "}
-                            </Text>
-
-                        
-                        </View>
-                    ) : (
-                        <Text className="text-sm text-red-500 italic">
-                            Nutrition Not Available
+                <View key = {idx}>
+                    <Text>{"\n"}</Text>
+                    <TouchableOpacity 
+                    onPress={() => {
+                        console.log("Going to " + name)
+                        setMealName(name)
+                        setCurrentMeal(meals[name])
+                        setShowMealModal(true)
+                    }}
+                    >
+                    
+                        <Text className="text-lg">
+                            {name}
                         </Text>
-                    )}
-                </TouchableOpacity>
+
+                        {Object.keys(meals[name].nut).includes("calories_per_serving") ? (
+                            <View className = "flex-row">
+
+                                <Text className="text-sm text-gray-600">
+                                    Calories: {Math.round(meals[name].nut["calories_per_serving"].amount * 100) / 100 + "    "}
+                                </Text>
+                                <Text className="text-sm text-gray-600">
+                                    Carb: {Math.round(meals[name].nut["Total Carbohydrate."].amount * 100) / 100 + "   "}
+                                </Text>
+                                <Text className="text-sm text-gray-600">
+                                    Protein: {Math.round(meals[name].nut["Protein"].amount * 100) / 100 + "  "}
+                                </Text>
+                                <Text className="text-sm text-gray-600">
+                                    Fat: {Math.round(meals[name].nut["Total Fat"].amount * 100) / 100 + "    "}
+                                </Text>
+
+                            
+                            </View>
+                        ) : (
+                            <Text className="text-sm text-red-500 italic">
+                                Nutrition Not Available
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
             ))}
 
-
+      
 
                 <TouchableOpacity
                 onPress={() => {

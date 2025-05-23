@@ -48,7 +48,7 @@ export default function Register() {
             body
           );
 
-          await AsyncStorage.setItem("userData", data)
+          await AsyncStorage.setItem("userData", JSON.stringify(data))
           navigation.navigate('TabNavigator', { screen: 'Menu' });
         }
       } else {

@@ -8,8 +8,10 @@ import Account from 'components/Account';
 import Meals from 'components/Meals';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import './global.css';
+import { useEffect } from 'react';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -84,6 +86,12 @@ function TabNavigator(){
 
 //App + StackNavigation
 export default function App() {
+  useEffect(() => {
+    async function clearCache(){
+      await AsyncStorage.clear()
+    }
+    clearCache()
+  })
   return (
     <NavigationContainer>
       <Stack.Navigator>
