@@ -39,6 +39,8 @@ export default ({ navigation }) => {
 
     // Loading data
     useEffect(() => {
+
+
         async function load() {
             setData(await getMenu())
             setNut(await getNutrition())

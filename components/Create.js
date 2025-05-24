@@ -61,16 +61,24 @@ export default function Register() {
   };
 
   async function checkForIfLoggedIn(){
-    if(await AsyncStorage.getItem("userData")){
+    let data = await AsyncStorage.getItem("userData")
+    if (data == undefined || data == '{}'){
+      return false
+    }
+    else {
       return true
     }
-    return false
   }
 
   useEffect(() => {
-    if(checkForIfLoggedIn()){
-      navigation.navigate('TabNavigator', { screen: 'Menu' })
+    const checkLogin = async () => {
+      const isLoggedIn = await checkForIfLoggedIn()
+      if (isLoggedIn) {
+        navigation.navigate('TabNavigator', { screen: 'Menu' })
+      }
     }
+
+  checkLogin();
   }, [])
 
   return (

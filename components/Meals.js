@@ -91,7 +91,6 @@ export default ({ navigation }) => {
                     <Text>{"\n"}</Text>
                     <TouchableOpacity 
                     onPress={() => {
-                        console.log("Going to " + name)
                         setMealName(name)
                         setCurrentMeal(meals[name])
                         setShowMealModal(true)

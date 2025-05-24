@@ -30,7 +30,6 @@ export default function Login() {
   const handleButtonClick = async () => {
     try {
       if (form.username && form.password) {
-        console.log(DBAPI_URI)
         const body = {
           username: form.username,
           password: form.password,
@@ -40,7 +39,6 @@ export default function Login() {
           DBAPI_URI + '/users/sign-in',
           body
         );
-        console.log(data)
 
         await AsyncStorage.setItem("userData", JSON.stringify(data))
 

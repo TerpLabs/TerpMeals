@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DBAPI_URI } from '@env';
 import FoodModal from './modals/FoodModal';
 import { BarChart } from "react-native-gifted-charts";
-import { getTrackedNut, getTrackedMeals } from 'utils/cache_and_data';
+import { getTrackedNut, getTrackedMeals, getNutrition } from 'utils/cache_and_data';
 
 
 export default ({ navigation }) => {
@@ -75,11 +75,14 @@ export default ({ navigation }) => {
     // Loading data on page reload
     useEffect(() => {
         async function load() {
+            setNut(await getNutrition())
             setTrackedNut(await getTrackedNut())
             setTrackedMeals(await getTrackedMeals())
+            
         }
 
         load();
+       
     }, []);
 
     return (

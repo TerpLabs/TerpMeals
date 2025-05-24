@@ -61,6 +61,11 @@ export default function MealModal({ visible, onClose, prevDiningHall, allNut, cu
             })
 
 
+            //always setting serving size to "1 plate" for meals
+            mealCopy.nut['serving size'].units = "plate"
+            mealCopy.nut['serving size'].amount = 1
+
+
             mealCopy.dishes[dish] = newServings
             if(newServings == 0){
                 delete mealCopy.dishes[dish]
